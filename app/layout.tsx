@@ -1,0 +1,1 @@
+import "./globals.css"; export const viewport={width:"device-width",initialScale:1}; export const metadata={title:"DC Daily Checklist",description:"Facility rounds, issue tracking and daily cooling readings"}; export default function Layout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}
