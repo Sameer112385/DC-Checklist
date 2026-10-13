@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import ts from 'typescript';
-const source=fs.readFileSync('lib/supabase-server.ts','utf8');
-fs.mkdirSync('.test-output',{recursive:true});
-fs.writeFileSync('.test-output/server.mjs',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText);
-const {readRecords,authorize,insertRecord,errorResponse}=await import('../.test-output/server.mjs');
+import {compileModules} from './compile.mjs';
+const {readRecords,authorize,insertRecord,errorResponse}=await compileModules('server',['roles','supabase-server']);
 test('reads all 1234 records even when the server caps responses below the requested page size',async()=>{
   const input=Array.from({length:1234},(_,i)=>({id:String(i),created_at:1760000000000+i,payload:JSON.stringify({id:String(i),name:'Inspector '+i})}));
   let calls=0;
