@@ -1,0 +1,2 @@
+ALTER TABLE public.dc_company_settings ADD COLUMN IF NOT EXISTS demo_enabled boolean NOT NULL DEFAULT false;
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_publication WHERE pubname='supabase_realtime') AND NOT EXISTS(SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='dc_company_settings') THEN ALTER PUBLICATION supabase_realtime ADD TABLE public.dc_company_settings; END IF; END $$;
