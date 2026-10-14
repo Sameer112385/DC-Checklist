@@ -1,0 +1,2 @@
+import {apiFetch} from './supabase-browser';import {readApiJson} from './api-json';
+export async function microsoft(action:string,input:any={}){return readApiJson<any>(await apiFetch('/api/microsoft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...input})}),'Microsoft operation failed.');}

@@ -5,6 +5,7 @@ import {apiFetch} from '../lib/supabase-browser';
 import {readApiJson} from '../lib/api-json';
 import {roles,type Profile,type Role} from '../lib/roles';
 import {useProfile} from '../lib/profile-context';
+import MicrosoftSettings from './MicrosoftSettings';
 export default function AdminUsers(){
   const me=useProfile();
   const [users,setUsers]=useState<Profile[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
@@ -21,7 +22,7 @@ export default function AdminUsers(){
   }catch(e){setError(e instanceof Error?e.message:'Could not update the user.')}finally{setBusy(false)}}
   function edit(id:string,field:keyof Profile,value:string|boolean){setUsers(rows=>rows.map(u=>u.user_id===id?{...u,[field]:value}:u))}
   const visible=users.filter(u=>(u.email+' '+u.full_name+' '+u.role).toLowerCase().includes(search.toLowerCase()));
-  return <><div className="admin-summary"><article><Users size={22}/><strong>{users.length}</strong><span>Checklist users</span></article><article><ShieldCheck size={22}/><strong>{users.filter(u=>u.active).length}</strong><span>Active accounts</span></article><article><strong>3</strong><span>Inspector · Supervisor · Admin</span></article></div>
+  return <><MicrosoftSettings/><div className="admin-summary"><article><Users size={22}/><strong>{users.length}</strong><span>Checklist users</span></article><article><ShieldCheck size={22}/><strong>{users.filter(u=>u.active).length}</strong><span>Active accounts</span></article><article><strong>3</strong><span>Inspector · Supervisor · Admin</span></article></div>
     {error&&<div className="error" role="alert">{error}</div>}{notice&&<p className="admin-notice" role="status">{notice}</p>}
     <section><div className="sectiontitle"><h2><UserPlus size={18}/> Add user</h2></div><p className="hint">Inspectors submit rounds. Supervisors review inspections and record repairs. Admins also manage checklists and users.</p>
       <form onSubmit={add} className="admin-form"><label>Account type<select value={existing?'existing':'new'} onChange={e=>{setExisting(e.target.value==='existing');setPassword('')}}><option value="new">Create new account</option><option value="existing">Add existing Supabase account</option></select></label>

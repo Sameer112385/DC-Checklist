@@ -49,4 +49,16 @@ Run `npm test`, `npm run typecheck`, and `npm run build`. All inspection validat
 
 The app verifies sessions server-side with Supabase Auth and checks approved membership before database access. RLS independently enforces the role, active status and inspector ownership. Public signup alone grants no checklist access. Normal clients cannot edit membership, update records, or delete history.
 
-The role upgrade and initial Admin account are configured in your selected Supabase project. The local Admin user list has been verified. New account creation is covered by isolated tests; existing Sites data has not been imported and hosted deployment must be updated separately.
+The role upgrade and initial Admin account are configured in your selected Supabase project. The original three Sites inspections have been imported and verified. Local and Sites connect to the same project and share records, users, roles and Microsoft settings.
+
+## Fault photos and Teams notifications
+
+Every newly submitted faulty item requires fault details and at least one uploaded picture. Choose JPEG, PNG or WebP, up to 5 MB per picture and three pictures per item. Photos are saved in the configured company SharePoint library through Power Automate; Supabase stores only protected file references. Photos appear in saved inspection details and filtered check-detail review. Existing inspections without pictures remain readable.
+
+Admins can edit the Teams channel link, SharePoint library link, existing photo folder, private gateway workflow URL, Test/Live mode and enable switches under Admin users → Microsoft 365 settings. Both hosts use these same settings. Test notifications are labelled TEST. Historical photos retain their original configuration reference when destinations change. The saved webhook URL is never returned to browsers.
+
+The selected Supabase project already has the photo schema and dc-checklist-microsoft Edge Function installed. For a new project, apply supabase/photos-upgrade.sql and supabase/pdf-notifications-upgrade.sql after the role schema and deploy the Microsoft gateway function before enabling photos. Use the prepared Power Automate gateway package, connect SharePoint and Teams, and keep its signed webhook in server-only configuration. The gateway must return confirmed JSON results; HTTP 202 alone is not treated as a saved photo.
+
+Submission saves the inspection first, then generates the same complete inspection PDF (including the inspector name), uploads it to the configured SharePoint folder, and posts a Teams message with a View inspection PDF link, inspector, date, shift, area, faults and a link to the inspection. A notification failure preserves the inspection. Submitters/admins can retry failed notifications from saved inspection details; check channel/run history first after an interrupted delivery to avoid duplicates. Disabling uploads prevents new faulty submissions until uploads are re-enabled. Removing a picture from a draft does not delete its SharePoint file.
+
+Power Automate uses its owner's Microsoft connection. If Microsoft expires that connection, reconnect it in Power Automate. Configure the real channel/library and switch from Test to Live before live operation.
