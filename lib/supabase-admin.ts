@@ -54,3 +54,14 @@ export async function listAccounts(client:SupabaseClient):Promise<Profile[]>{
     rows.push(...(data??[]));offset+=(data??[]).length;if(!data?.length||count===null||offset>=count)return rows;
   }
 }
+
+export async function resetAccountPassword(client:SupabaseClient,actorId:string,input:any){
+ if(!input||typeof input.user_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.user_id)||typeof input.password!=='string'||input.password.length<12||input.password.length>128)throw new AccessError('Choose a valid user and a password between 12 and 128 characters.',400);
+ const actor=await client.from('dc_checklist_members').select('role,active').eq('user_id',actorId).maybeSingle();
+ if(actor.error||actor.data?.role!=='admin'||!actor.data.active)throw new AccessError('Admin access required.',403);
+ const target=await client.from('dc_checklist_members').select('user_id').eq('user_id',input.user_id).maybeSingle();
+ if(target.error||!target.data)throw new AccessError('Checklist user not found.',404);
+ const result=await client.auth.admin.updateUserById(input.user_id,{password:input.password});
+ if(result.error)throw new AccessError('Could not reset the password. Check Supabase password requirements and retry.',400);
+ return {ok:true,user_id:input.user_id};
+}

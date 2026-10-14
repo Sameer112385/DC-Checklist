@@ -62,3 +62,11 @@ The selected Supabase project already has the photo schema and dc-checklist-micr
 Submission saves the inspection first, then generates the same complete inspection PDF (including the inspector name), uploads it to the configured SharePoint folder, and posts a Teams message with a View inspection PDF link, inspector, date, shift, area, faults and a link to the inspection. A notification failure preserves the inspection. Submitters/admins can retry failed notifications from saved inspection details; check channel/run history first after an interrupted delivery to avoid duplicates. Disabling uploads prevents new faulty submissions until uploads are re-enabled. Removing a picture from a draft does not delete its SharePoint file.
 
 Power Automate uses its owner's Microsoft connection. If Microsoft expires that connection, reconnect it in Power Automate. Configure the real channel/library and switch from Test to Live before live operation.
+
+Admins can use Manage users → Reset password to set and confirm a new 12–128 character password directly in Supabase. Share it with the user securely. Roles, active status and inspection history are preserved. Only approved active admins can perform this operation; accounts outside the checklist membership cannot be targeted.
+
+
+## Company branding and locations
+One company can have multiple locations and checklist areas. Admin users → Company name & logo lets admins save a name and PNG/JPEG logo (up to 2 MB). Manage checklists → Company locations & checklist areas adds a location and area, either copying an existing checklist with independent question IDs or starting empty. Add questions before inspecting an empty area. Location filters, checklist selectors, reports and completion history use the shared definitions. New areas are not counted as missed before their creation date. Company branding is included in PDFs; newly submitted inspections snapshot company and location names.
+For a new project, apply supabase/company-upgrade.sql after the roles upgrade. Both hosts share these settings through Supabase. Original checklists, inspections and user roles are preserved.
+

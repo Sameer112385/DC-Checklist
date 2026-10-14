@@ -14,6 +14,6 @@ Deno.serve(async(req:Request)=>{
   if(Number(req.headers.get('content-length')||0)>7200000)return json({error:'Photo exceeds the upload limit.'},413);
   const text=await req.text();if(text.length>7200000)return json({error:'Photo exceeds the upload limit.'},413);
   const db=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false}});
-  return json(await microsoftAction(db,userDb,member.data,JSON.parse(text),buildPdf));
+  return json(await microsoftAction(db,userDb,member.data,JSON.parse(text),async record=>{const brand=await db.from('dc_company_settings').select('name,logo_data').eq('id',true).single();if(brand.error)throw new IntegrationError('Could not load PDF branding.',503);return buildPdf({...record,companyName:record.companyName||brand.data.name,pdfLogo:brand.data.logo_data})}));
  }catch(e){return json({error:e instanceof IntegrationError?e.message:'Microsoft integration is temporarily unavailable.'},e instanceof IntegrationError?e.status:500)}
 });

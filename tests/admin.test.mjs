@@ -40,3 +40,14 @@ test('bad roles and short passwords are rejected before calling Supabase',()=>{
  assert.throws(()=>admin.accountInput({...input,role:'owner'}),e=>e.status===400);
  assert.throws(()=>admin.accountInput({...input,password:'short'}),e=>e.status===400);
 });
+function resetClient(role='admin',active=true,target=true,error=null){
+ const calls=[];
+ return {calls,
+  from:()=>({select:()=>({eq:(_,id)=>({maybeSingle:async()=>({data:id===actor?{role,active}:target?{user_id:created}:null})})})}),
+  auth:{admin:{updateUserById:async(id,value)=>{calls.push({id,value});return {error}}}}
+ };
+}
+test('password reset writes only the target Auth password and returns no secret',async()=>{const client=resetClient();const result=await admin.resetAccountPassword(client,actor,{user_id:created,password:input.password});assert.deepEqual(client.calls,[{id:created,value:{password:input.password}}]);assert.deepEqual(result,{ok:true,user_id:created});assert.equal('password' in result,false)});
+test('password reset rejects inactive or non-admin actors without changing Auth',async()=>{for(const [role,active] of [['inspector',true],['supervisor',true],['admin',false]]){const client=resetClient(role,active);await assert.rejects(()=>admin.resetAccountPassword(client,actor,{user_id:created,password:input.password}),e=>e.status===403);assert.equal(client.calls.length,0)}});
+test('password reset rejects unknown users, invalid IDs and weak passwords',async()=>{const client=resetClient('admin',true,false);await assert.rejects(()=>admin.resetAccountPassword(client,actor,{user_id:created,password:input.password}),e=>e.status===404);for(const value of [{user_id:'bad',password:input.password},{user_id:created,password:'short'}])await assert.rejects(()=>admin.resetAccountPassword(client,actor,value),e=>e.status===400);assert.equal(client.calls.length,0)});
+test('Supabase rejection is reported without exposing password or Auth details',async()=>{const client=resetClient('admin',true,true,{message:input.password});await assert.rejects(()=>admin.resetAccountPassword(client,actor,{user_id:created,password:input.password}),e=>e.status===400&&!e.message.includes(input.password))});

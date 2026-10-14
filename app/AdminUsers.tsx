@@ -5,11 +5,15 @@ import {apiFetch} from '../lib/supabase-browser';
 import {readApiJson} from '../lib/api-json';
 import {roles,type Profile,type Role} from '../lib/roles';
 import {useProfile} from '../lib/profile-context';
+import CompanySettings,{type Company} from './CompanySettings';
 import MicrosoftSettings from './MicrosoftSettings';
-export default function AdminUsers(){
+export default function AdminUsers({company,onCompanySaved}:{company:Company;onCompanySaved:(value:Company)=>void}){
   const me=useProfile();
   const [users,setUsers]=useState<Profile[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
   const [email,setEmail]=useState(''),[fullName,setFullName]=useState(''),[password,setPassword]=useState(''),[role,setRole]=useState<Role>('inspector'),[existing,setExisting]=useState(false);
+  const [resetUser,setResetUser]=useState<Profile|null>(null),[resetPassword,setResetPassword]=useState(''),[confirmPassword,setConfirmPassword]=useState('');
+  function closeReset(){setResetUser(null);setResetPassword('');setConfirmPassword('')}
+  async function reset(e:React.FormEvent){e.preventDefault();if(!resetUser)return;if(resetPassword!==confirmPassword){setError('Passwords do not match.');return}setBusy(true);setError('');setNotice('');try{await readApiJson(await apiFetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset_password',user_id:resetUser.user_id,password:resetPassword})}),'Could not reset the password.');setNotice('Password updated in Supabase for '+resetUser.email+'. Share the new password securely. Their role and inspection history are unchanged.');closeReset()}catch(e){setError(e instanceof Error?e.message:'Could not reset the password.')}finally{setBusy(false)}}
   const load=useCallback(async()=>{setLoading(true);try{setUsers(await readApiJson(await apiFetch('/api/admin/users'),'Could not load users.'))}finally{setLoading(false)}},[]);
   useEffect(()=>{load().catch(e=>setError(e.message))},[load]);
   async function add(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');setNotice('');try{
@@ -22,7 +26,7 @@ export default function AdminUsers(){
   }catch(e){setError(e instanceof Error?e.message:'Could not update the user.')}finally{setBusy(false)}}
   function edit(id:string,field:keyof Profile,value:string|boolean){setUsers(rows=>rows.map(u=>u.user_id===id?{...u,[field]:value}:u))}
   const visible=users.filter(u=>(u.email+' '+u.full_name+' '+u.role).toLowerCase().includes(search.toLowerCase()));
-  return <><MicrosoftSettings/><div className="admin-summary"><article><Users size={22}/><strong>{users.length}</strong><span>Checklist users</span></article><article><ShieldCheck size={22}/><strong>{users.filter(u=>u.active).length}</strong><span>Active accounts</span></article><article><strong>3</strong><span>Inspector · Supervisor · Admin</span></article></div>
+  return <><CompanySettings company={company} onSaved={onCompanySaved}/><MicrosoftSettings/><div className="admin-summary"><article><Users size={22}/><strong>{users.length}</strong><span>Checklist users</span></article><article><ShieldCheck size={22}/><strong>{users.filter(u=>u.active).length}</strong><span>Active accounts</span></article><article><strong>3</strong><span>Inspector · Supervisor · Admin</span></article></div>
     {error&&<div className="error" role="alert">{error}</div>}{notice&&<p className="admin-notice" role="status">{notice}</p>}
     <section><div className="sectiontitle"><h2><UserPlus size={18}/> Add user</h2></div><p className="hint">Inspectors submit rounds. Supervisors review inspections and record repairs. Admins also manage checklists and users.</p>
       <form onSubmit={add} className="admin-form"><label>Account type<select value={existing?'existing':'new'} onChange={e=>{setExisting(e.target.value==='existing');setPassword('')}}><option value="new">Create new account</option><option value="existing">Add existing Supabase account</option></select></label>
@@ -35,6 +39,7 @@ export default function AdminUsers(){
         <td><input aria-label={'Name for '+user.email} maxLength={120} value={user.full_name} onChange={e=>edit(user.user_id,'full_name',e.target.value)}/></td><td>{user.email}{user.user_id===me.user_id&&<small>Your account</small>}</td>
         <td><select aria-label={'Role for '+user.email} disabled={busy||user.user_id===me.user_id} value={user.role} onChange={e=>edit(user.user_id,'role',e.target.value)}>{roles.map(r=><option key={r} value={r}>{r[0].toUpperCase()+r.slice(1)}</option>)}</select></td>
         <td><select aria-label={'Status for '+user.email} disabled={busy||user.user_id===me.user_id} value={user.active?'active':'disabled'} onChange={e=>edit(user.user_id,'active',e.target.value==='active')}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
-        <td><button disabled={busy||!user.full_name.trim()} onClick={()=>save(user)}>Save changes</button></td></tr>)}</tbody></table>{!visible.length&&<p>No users match this search.</p>}</div>}
+        <td><button disabled={busy||!user.full_name.trim()} onClick={()=>save(user)}>Save changes</button> <button disabled={busy} aria-label={'Reset password for '+user.email} onClick={()=>{closeReset();setResetUser(user);setError('');setNotice('')}}>Reset password</button></td></tr>)}</tbody></table>{!visible.length&&<p>No users match this search.</p>}</div>}
+      {resetUser&&<form className="admin-form" onSubmit={reset} aria-label="Reset user password"><div><h3>Reset password for {resetUser.email}</h3><p className="hint">This replaces the login password in Supabase. Share the new password with the user securely.</p></div><label>New password<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} disabled={busy} value={resetPassword} onChange={e=>setResetPassword(e.target.value)}/><small>12–128 characters.</small></label><label>Confirm new password<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} disabled={busy} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)}/></label><div><button className="primary" disabled={busy}>{busy?'Resetting…':'Save new password'}</button> <button type="button" disabled={busy} onClick={closeReset}>Cancel</button></div></form>}
       <p className="hint">Disabling an account blocks checklist access and keeps its inspection history. Your own admin account and the last active admin are protected.</p></section></>;
 }
