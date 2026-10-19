@@ -1,0 +1,3 @@
+import {authorizeRequest,errorResponse} from '../../../lib/supabase-server';
+export const dynamic='force-dynamic';
+export async function POST(req:Request){try{await authorizeRequest(req);const body:any=await req.json();const response=await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL+'/functions/v1/dc-checklist-admin',{method:'POST',headers:{Authorization:req.headers.get('authorization')!,apikey:process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,'Content-Type':'application/json'},body:JSON.stringify({...body,action:'change_password'})});return Response.json(await response.json(),{status:response.status,headers:{'Cache-Control':'no-store'}})}catch(e){return errorResponse(e,'Could not change password.')}}

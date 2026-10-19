@@ -17,9 +17,9 @@ export async function authorizeRequest(req:Request,allowed?:readonly Role[]):Pro
   const client=createClient(url,key,{global:{headers:{Authorization:token}},auth:{persistSession:false,autoRefreshToken:false}});
   const {data,error}=await client.auth.getUser(token.slice(7));
   if(error||!data.user)throw new AccessError('Your session expired. Please sign in again.',401);
-  const membership=await client.from('dc_checklist_members').select('user_id,email,full_name,role,active').eq('user_id',data.user.id).maybeSingle();
+  const membership=await client.from('dc_checklist_members').select('user_id,email,full_name,role,active,password_change_required').eq('user_id',data.user.id).maybeSingle();
   if(membership.error)throw new AccessError('Database setup is incomplete. Apply supabase/roles-upgrade.sql.',503);
-  return {client,user:data.user,profile:checkProfile(membership.data,allowed)};
+  const profile=checkProfile(membership.data,allowed);if(profile.role!=='admin'&&profile.password_change_required&&!['/api/me','/api/password'].includes(new URL(req.url).pathname))throw new AccessError('Change your temporary password before using the portal.',403);return {client,user:data.user,profile};
 }
 export async function authorize(req:Request,allowed?:readonly Role[]){return (await authorizeRequest(req,allowed)).client}
 export type RecordRow={id:string;createdAt:number;payload:string};

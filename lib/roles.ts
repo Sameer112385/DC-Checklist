@@ -1,8 +1,9 @@
 export const roles=['inspector','supervisor','admin'] as const;
 export type Role=typeof roles[number];
-export type Profile={user_id:string;email:string;full_name:string;role:Role;active:boolean};
+export type Profile={user_id:string;email:string;full_name:string;role:Role;active:boolean;password_change_required?:boolean};
 export function isRole(value:unknown):value is Role{return roles.includes(value as Role)}
 export function canInspect(role:Role){return role==='inspector'||role==='admin'}
+export function canResolve(role:Role){return roles.includes(role)}
 export function canReview(role:Role){return role==='supervisor'||role==='admin'}
 export function canOpenTab(role:Role,tab:string){
   if(tab==='Admin users'||tab==='Manage checklists')return role==='admin';

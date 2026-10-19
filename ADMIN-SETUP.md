@@ -19,3 +19,8 @@ The table supports role changes, name updates and disabling accounts. Disabled u
 New inspections and repairs record the protected profile name; caller-supplied names are ignored. Existing payloads and names stay unchanged. Pre-upgrade and imported inspections have no account owner and remain visible to Supervisors/Admins. They are never assigned automatically by name, which could give access to the wrong person. Shared question definitions and repair records remain readable by Inspectors.
 
 Test with npm test, npm run typecheck and npm run build. Tests exercise PostgreSQL RLS, role management, disabled access, rollback of new unapproved Auth accounts and existing-data preservation in an isolated database. Live account creation requires configured Supabase Auth and a server secret.
+
+## Shared team access and required password changes (19 October 2026)
+Apply supabase/team-access-upgrade.sql after the existing schema and photos upgrades. The connected hosted Supabase project is already upgraded. Active team members share inspections and submitted fault photos. Inspectors can resolve issues with their own signed-in name recorded. User management remains Admin-only.
+Deploy the included dc-checklist-admin Edge Function with JWT verification enabled. Existing and newly added non-admin members must replace their temporary password before access. Admin resets require another password change. Change Password is also available in Inspector and Supervisor account menus and verifies their current password.
+For Northflank, commit and push this updated source, then rebuild/redeploy. Restart Start-Checklist.bat for local changes. User management uses the secured Edge Function and does not require a local secret key.
