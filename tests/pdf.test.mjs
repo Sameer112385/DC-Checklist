@@ -6,6 +6,8 @@ fs.copyFileSync('app/templates.json',root+'/templates.json');
 const {buildPdf}=await import('../'+root+'/inspection-pdf.mjs');
 test('backend PDF generator produces a complete PDF from the saved snapshot',async()=>{
  const record={id:'pdf-test',createdAt:Date.now(),name:'Sameer Shaikh',date:'2026-10-14',shift:'1',group:'sama',items:[{id:'check',section:'General',label:'Doors & Access'}],answers:{check:{status:'FAULTY',note:'Fault details'}}};
- const content=await buildPdf(record),bytes=Buffer.from(content,'base64');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert.ok(bytes.length>10000);assert.match(bytes.toString('latin1'),/%%EOF/);
+ const content=await buildPdf(record),bytes=Buffer.from(content,'base64');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert.ok(bytes.length>1000);assert.match(bytes.toString('latin1'),/%%EOF/);assert.doesNotMatch(bytes.toString('latin1'),/FontFile2/);
 });
 test('backend PDF embeds a PNG company logo and custom location snapshot',async()=>{const record={id:'logo-test',createdAt:Date.now(),name:'Inspector',companyName:'Company',location:'New location',areaName:'New floor',date:'2026-10-14',shift:'1',group:'area_custom',items:[{id:'check',label:'Check'}],answers:{check:{status:'Normal'}},pdfLogo:'data:image/png;base64,'+Buffer.from(encode({width:2,height:1,data:new Uint8Array([0,100,50,255,0,100,50,255]),channels:4})).toString('base64')};const bytes=Buffer.from(await buildPdf(record),'base64');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');assert.match(bytes.toString('latin1'),/\/Subtype \/Image/)});
+
+test('Unicode inspector names still embed the required font',async()=>{const record={id:'unicode-test',createdAt:Date.now(),name:'مفتش',date:'2026-10-20',shift:'1',group:'custom',items:[],answers:{}};const bytes=Buffer.from(await buildPdf(record),'base64');assert.match(bytes.toString('latin1'),/FontFile2/);assert.match(bytes.toString('latin1'),/%%EOF/)});

@@ -37,6 +37,9 @@ export async function callWorkflow(row:any,payload:any){
  return result;
 }
 const escapeHtml=(s:any)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+export function notificationInterrupted(task:any,now=Date.now()){
+ return task?.status==='sending'&&Number.isFinite(Date.parse(task.updated_at))&&Date.parse(task.updated_at)<now-180000;
+}
 export async function microsoftAction(db:SupabaseClient,userDb:SupabaseClient,profile:any,input:any,buildPdf?:(record:any)=>Promise<string>){
  const action=input?.action;
  if(['settings_get','settings_save','settings_test'].includes(action)){
@@ -74,11 +77,15 @@ export async function microsoftAction(db:SupabaseClient,userDb:SupabaseClient,pr
   const record=JSON.parse(found.data.payload);if(record.kind!=='inspection')throw new IntegrationError('Only inspections send submission notifications.');
   if(action==='notify'&&found.data.created_by!==profile.user_id&&profile.role!=='admin')throw new IntegrationError('Only the submitter or an admin can retry a notification.',403);
   let existing=await db.from('dc_teams_notifications').select('*').eq('record_id',record.id).maybeSingle();if(existing.error)throw new IntegrationError('Notification status is unavailable.',503);
-  if(action==='notification_status')return {status:existing.data?.status||'not_queued',canRetry:found.data.created_by===profile.user_id||profile.role==='admin'};
+  if(action==='notification_status')return {status:notificationInterrupted(existing.data)?'failed':existing.data?.status||'not_queued',canRetry:found.data.created_by===profile.user_id||profile.role==='admin'};
   if(!existing.data){const current=await config(db);if(!current?.settings.notificationsEnabled)return {status:'disabled'};
    const queued=await db.from('dc_teams_notifications').upsert({record_id:record.id,config_id:current.id},{onConflict:'record_id',ignoreDuplicates:true});if(queued.error)throw new IntegrationError('Could not queue notification.',503);
    existing=await db.from('dc_teams_notifications').select('*').eq('record_id',record.id).single();}
   const task=existing.data;if(task.status==='sent')return {status:'sent'};
+  if(notificationInterrupted(task)){
+   const recovered=await db.from('dc_teams_notifications').update({status:'failed'}).eq('record_id',record.id).eq('status','sending').lt('updated_at',new Date(Date.now()-180000).toISOString());
+   if(recovered.error)throw new IntegrationError('Could not recover the interrupted notification.',503);
+  }
   const claim=await db.from('dc_teams_notifications').update({status:'sending',attempts:task.attempts+1,updated_at:new Date().toISOString()}).eq('record_id',record.id).in('status',['pending','failed']).select().maybeSingle();if(claim.error)throw new IntegrationError('Could not claim notification.',503);if(!claim.data)return {status:'sending'};
   try{
   const current=await config(db,task.config_id);

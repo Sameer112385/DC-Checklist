@@ -1,11 +1,10 @@
 import {jsPDF} from 'npm:jspdf@4.2.1';
 import {autoTable} from 'npm:jspdf-autotable@5.0.8';
 import templates from './templates.json' with {type:'json'};
-import {font} from './pdf-font.ts';
 const items=(r:any,t:any[])=>r.items||t.find(g=>g.id===r.group)?.items.filter((i:any)=>r.answers?.[i.id])||[];
 
 export function createInspectionPdf(records:any[], templates:any[], options:{demo?:boolean; filters?:string; status?:string; font?:string;companyName?:string;logo?:string}={}) {
-  const doc=new jsPDF({orientation:'landscape',compress:true});
+  const doc=new jsPDF({orientation:'landscape',compress:true,putOnlyUsedFonts:true});
   if(options.font){doc.addFileToVFS('Inspector.ttf',options.font);doc.addFont('Inspector.ttf','Inspector','normal');doc.setFont('Inspector','normal');}
   const width=doc.internal.pageSize.getWidth();
   records.forEach((r,index)=>{
@@ -32,4 +31,10 @@ export function createInspectionPdf(records:any[], templates:any[], options:{dem
 }
 
 
-export async function buildPdf(record:any){return createInspectionPdf([record],templates,{font,logo:record.pdfLogo}).output("datauristring").split(",")[1];}
+export async function buildPdf(record:any){
+ // Standard PDF fonts cover ordinary inspection text. Parse/embed the larger
+ // Unicode font only when the saved report actually needs it.
+ const needsUnicode=/[^\u0000-\u00ff\u2013-\u2022\u20ac\u2122]/.test(JSON.stringify({...record,pdfLogo:undefined}));
+ const font=needsUnicode?(await import('./pdf-font.ts')).font:undefined;
+ return createInspectionPdf([record],templates,{font,logo:record.pdfLogo}).output('datauristring').split(',')[1];
+}
