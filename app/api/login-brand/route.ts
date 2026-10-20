@@ -1,0 +1,3 @@
+import {createClient} from '@supabase/supabase-js';
+export const dynamic='force-dynamic';
+export async function GET(){try{const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)throw Error('Configuration missing');const {data,error}=await createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}}).rpc('dc_login_branding');if(error||!data)throw Error('Branding unavailable');return Response.json({name:data.name,logo_data:data.logo_data},{headers:{'Cache-Control':'no-store'}})}catch{return Response.json({error:'Branding unavailable'},{status:503,headers:{'Cache-Control':'no-store'}})}}

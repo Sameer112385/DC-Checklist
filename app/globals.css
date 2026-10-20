@@ -38,3 +38,35 @@ aside{display:flex;flex-direction:column;padding-bottom:18px}aside>nav{flex:1;mi
 .sidebar-toggle{position:absolute;right:-16px;top:24px;z-index:20;width:32px;height:32px;padding:0;justify-content:center;background:#214656;color:white;border-color:#557582;box-shadow:0 2px 7px #102b3b22}.sidebar-toggle:focus-visible{outline:2px solid #49c5a6;outline-offset:3px}.sidebar-clock-icon{display:none}aside,main{transition:width .18s ease,margin-left .18s ease}.sidebar-collapsed aside{width:76px;padding:24px 12px 18px}.sidebar-collapsed main{margin-left:76px;width:calc(100% - 76px)}.sidebar-collapsed .brand{padding:0 0 32px;justify-content:center;gap:0}.sidebar-collapsed .brand>span,.sidebar-collapsed .navlabel,.sidebar-collapsed .nav-text,.sidebar-collapsed .nav b,.sidebar-collapsed .account-card-text,.sidebar-collapsed .account-card>svg,.sidebar-collapsed .sidebar-clock-text{display:none}.sidebar-collapsed .nav{justify-content:center;padding:14px 0;gap:0}.sidebar-collapsed .nav svg{display:block}.sidebar-collapsed .account-card{justify-content:center;padding:8px 0}.sidebar-collapsed .sidebar-clock{display:flex;justify-content:center;padding:0 0 14px}.sidebar-collapsed .sidebar-clock-icon{display:block}.sidebar-collapsed .sidebar-footer{padding-top:14px}.sidebar-collapsed .account-popover{bottom:calc(100% + 10px);top:auto}@media(max-width:750px){.sidebar-toggle{right:12px;top:18px}.brand{padding-right:40px}.sidebar-collapsed aside{position:fixed;inset:0 auto 0 0;height:100dvh;z-index:30}.sidebar-collapsed .sidebar-toggle{right:-16px;top:24px}.sidebar-collapsed aside>nav{overflow-y:auto}.sidebar-collapsed .nav{width:100%;margin-bottom:7px;font-size:14px}.sidebar-collapsed .sidebar-footer{margin-top:auto}.sidebar-collapsed .shell{display:flex}}@media(prefers-reduced-motion:reduce){aside,main{transition:none}}
 
 .password-change{padding:18px;margin:0;max-width:440px}.password-change form{display:grid;gap:14px;margin:16px 0}.account-popover .password-change{padding:12px 0;border:0}.account-popover .password-change input{width:100%}
+
+/* Approved company login design. */
+
+.login-page{--login-accent:#2962ed;--login-ink:#173146;--login-muted:#617185;--login-paper:#f9fbfe;--login-field:#edf3fd;--login-edge:#d2ddeb;font-family:Arial,Helvetica,sans-serif;color:var(--login-ink)}
+.login-page *{box-sizing:border-box}
+.login-page .login-stage{width:100%;padding:42px 20px 28px;background:radial-gradient(ellipse at 15% 20%,#e6edf6,transparent 65%),#f1f5f9;display:flex;flex-direction:column;align-items:center}
+.login-page .login-panel{width:100%;max-width:438px;padding:32px 34px 28px;background:var(--login-paper);border:1px solid var(--login-edge);border-radius:18px;box-shadow:0 18px 45px #253c5812}
+.login-page .login-brand{text-align:center}
+.login-page .login-logo{width:66px;height:66px;padding:9px;border:1px solid var(--login-edge);border-radius:17px;background:#fff;margin:0 auto 18px;display:grid;place-items:center;box-shadow:0 2px 4px #20354b09}
+.login-page .login-logo img{width:100%;height:100%;object-fit:contain}
+.login-page h1{font-size:31px;letter-spacing:5px;font-weight:600;line-height:1.2;margin:0;color:#0d5d7d}
+.login-page .login-product{font-size:10px;letter-spacing:2.7px;font-weight:600;color:var(--login-muted);margin:11px 0 0}
+.login-page .login-intro{font-size:13px;line-height:1.65;text-align:center;color:var(--login-muted);margin:26px 0 25px}
+.login-page .login-form{display:flex;flex-direction:column;gap:8px}
+.login-page label{font-size:12px;font-weight:600;color:var(--login-ink)}
+.login-page input{width:100%;min-width:0;height:42px;border:1px solid var(--login-edge);border-radius:8px;background:var(--login-field);padding:0 12px;color:var(--login-ink);font:13px Arial,Helvetica,sans-serif;box-shadow:0 1px 2px #20354b08}
+.login-page input::placeholder{color:var(--login-muted);opacity:1}
+.login-page .login-form>input{margin-bottom:10px}
+.login-page .login-password{position:relative}
+.login-page .login-password input{padding-right:60px}
+.login-page .login-reveal{position:absolute;right:4px;top:3px;height:36px;padding:0 9px;background:none;border:0;color:var(--login-muted);font:12px Arial,Helvetica,sans-serif}
+.login-page .login-submit{width:100%;border:1px solid var(--login-accent);border-radius:8px;background:var(--login-accent);color:#fff;height:42px;margin-top:16px;font:600 13px Arial,Helvetica,sans-serif;box-shadow:0 3px 6px #174a9b17}
+.login-page .login-help{text-align:center;font-size:12px;color:var(--login-muted);line-height:1.7;margin:23px 0}
+.login-page .login-help span{font-weight:500;color:var(--login-ink)}
+.login-page .login-foot{display:flex;justify-content:center;align-items:center;gap:7px;padding-top:18px;border-top:1px solid var(--login-edge);font-size:11px;color:var(--login-muted)}
+.login-page .login-foot svg{width:14px;height:14px;color:#187e75}
+.login-page .login-tagline{font-size:11px;color:var(--login-muted);text-align:center;line-height:1.6;margin:20px 0 0}
+.login-page .login-message{font-size:12px;color:var(--login-muted);line-height:1.6;margin:6px 0 0}
+@media(max-width:420px){.login-page .login-stage{padding:26px 14px}.login-page .login-panel{padding:28px 22px}.login-page .login-break{display:none}.login-page input{font-size:16px}}
+
+.login-page{min-height:100dvh;background:#f1f5f9}.login-page .login-stage{min-height:100dvh;justify-content:center;padding:48px 20px}.login-page .login-error{color:#ac352c;background:#fff0ed;border-radius:7px;padding:10px 12px;font-size:12px;line-height:1.6;margin:8px 0 0}.login-page .login-help strong{font-weight:600;color:#173146}.login-page .login-logo{color:#0d5d7d}.login-page .login-submit:disabled{opacity:.6}.login-page button:focus-visible,.login-page input:focus-visible{outline:2px solid #2962ed;outline-offset:3px}@media(max-width:420px){.login-page .login-stage{padding:24px 14px}.login-page .login-panel{padding:28px 22px}.login-page input{font-size:16px}}
+.login-page .login-submit{justify-content:center}.login-page .login-panel{margin:0}.login-page .login-stage{padding:32px 20px}@media(max-width:420px){.login-page .login-stage{padding:24px 14px}}

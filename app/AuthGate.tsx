@@ -3,6 +3,7 @@ import {useEffect,useState} from 'react';
 import {browserClient,apiFetch} from '../lib/supabase-browser';
 import {readApiJson} from '../lib/api-json';
 import {ProfileContext} from '../lib/profile-context';
+import LoginForm from './LoginForm';
 import PasswordChange from './PasswordChange';
 import type {Profile} from '../lib/roles';
 function ApprovedApp({children}:{children:React.ReactNode}){
@@ -25,5 +26,5 @@ export default function AuthGate({children}:{children:React.ReactNode}){
   async function login(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{const {error}=await browserClient().auth.signInWithPassword({email,password});if(error)throw error;setPassword('')}catch(e){setError(e instanceof Error?e.message:'Could not sign in.')}finally{setBusy(false)}}
   if(loading)return <div className="auth-screen"><p>Checking your session…</p></div>;
   if(user)return <ApprovedApp key={user}>{children}</ApprovedApp>;
-  return <div className="auth-screen"><section className="auth-card"><h1>DC Daily Checklist</h1><p>Sign in with your approved account.</p><form onSubmit={login}><label>Email<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label><button className="primary" disabled={busy}>{busy?'Signing in…':'Sign in'}</button></form>{error&&<p className="error" role="alert">{error}</p>}</section></div>;
+  return <LoginForm email={email} password={password} busy={busy} error={error} onEmail={setEmail} onPassword={setPassword} onSubmit={login}/>;
 }
