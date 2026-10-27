@@ -1,0 +1,13 @@
+type ImageInfo={title:string;subtitle:string;company:string;legend:{label:string;color:string}[]};
+export async function chartPng(svg:SVGSVGElement,info:ImageInfo):Promise<Blob>{
+ const width=Math.max(900,Math.ceil(svg.getBoundingClientRect().width)),chartHeight=340,padding=28;
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');if(!ctx)throw new Error('Image export is unavailable in this browser.');
+ const wrap=(text:string,max:number)=>{const out:string[]=[];let line='';for(const word of text.split(/\s+/)){const next=line?line+' '+word:word;if(line&&ctx.measureText(next).width>max){out.push(line);line=word}else line=next}if(line)out.push(line);return out};
+ ctx.font='13px Arial';const legend=info.legend.map(i=>({...i,lines:wrap(i.label,width-padding*2-24)}));const height=chartHeight+130+legend.reduce((n,i)=>n+i.lines.length*18+8,0);
+ canvas.width=width*2;canvas.height=height*2;ctx.scale(2,2);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,width,height);ctx.fillStyle='#172b40';ctx.font='bold 18px Arial';ctx.fillText(info.title,padding,32);ctx.font='12px Arial';ctx.fillStyle='#526c80';ctx.fillText(info.company,padding,52);ctx.fillText(info.subtitle,padding,72);
+ const copy=svg.cloneNode(true) as SVGSVGElement;copy.setAttribute('xmlns','http://www.w3.org/2000/svg');copy.setAttribute('width',String(width-padding*2));copy.setAttribute('height',String(chartHeight));const rect=svg.getBoundingClientRect();copy.setAttribute('viewBox','0 0 '+rect.width+' '+rect.height);copy.style.background='white';copy.style.fontFamily='Arial, sans-serif';
+ const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)],{type:'image/svg+xml;charset=utf-8'}));try{const img=new Image();await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(new Error('Could not render the chart image.'));img.src=url});ctx.drawImage(img,padding,88,width-padding*2,chartHeight)}finally{URL.revokeObjectURL(url)}
+ let y=chartHeight+110;ctx.font='13px Arial';for(const i of legend){ctx.fillStyle=i.color;ctx.fillRect(padding,y-6,14,3);ctx.fillStyle='#284359';for(const line of i.lines){ctx.fillText(line,padding+24,y);y+=18}y+=8}ctx.font='11px Arial';ctx.fillStyle='#6b7f90';ctx.fillText('Daily averages · Missing readings are not interpolated · Riyadh (AST)',padding,height-16);
+ return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not create PNG image.')),'image/png'));
+}
+export function saveChartPng(blob:Blob,name:string){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}

@@ -10,6 +10,7 @@ export async function validateFaultPhotos(client:SupabaseClient,userId:string,gr
  if(!refs.length)return;
  const result=await client.from('dc_inspection_photos').select('id,user_id,group_id,item_id').in('id',refs.map(r=>r.id));
  if(result.error)throw new AccessError('Could not verify fault photos. Please retry.',503);
+ const active=await client.from('dc_issues').select('item_id,photos').eq('group_id',group).neq('status','Closed');if(active.error)throw new AccessError('Could not verify issue photos.',503);
  const rows=new Map((result.data??[]).map(p=>[p.id,p]));
- for(const ref of refs){const photo=rows.get(ref.id);if(!photo||photo.user_id!==userId||photo.group_id!==group||photo.item_id!==ref.item)throw new AccessError('Each photo must belong to this inspector and checklist item.',400)}
+ for(const ref of refs){const photo=rows.get(ref.id);if(!photo||(photo.user_id!==userId&&!(active.data||[]).some(t=>t.item_id===ref.item&&t.photos?.includes(ref.id)))||photo.group_id!==group||photo.item_id!==ref.item)throw new AccessError('Each photo must belong to this inspector and checklist item.',400)}
 }

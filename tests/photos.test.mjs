@@ -19,9 +19,9 @@ test('workflow 202 is never mistaken for confirmed upload success',async()=>{
 test('faults require photos, and another inspector or check cannot supply evidence',async()=>{
  const id='11111111-1111-4111-8111-111111111111',items=[{id:'check'}];
  await assert.rejects(()=>validateFaultPhotos({},'owner','group',items,{check:{status:'FAULTY'}}),/saved photo/);
- const db={from(){return {select(){return {in:async()=>({data:[{id,user_id:'other',group_id:'group',item_id:'check'}]})}}}}};
+ const db={from(table){if(table==='dc_issues')return {select(){return {eq(){return {neq:async()=>({data:[]})}}}}};return {select(){return {in:async()=>({data:[{id,user_id:'other',group_id:'group',item_id:'check'}]})}}}}};
  await assert.rejects(()=>validateFaultPhotos(db,'owner','group',items,{check:{status:'FAULTY',photos:[id]}}),/belong/);
- const own={from(){return {select(){return {in:async()=>({data:[{id,user_id:'owner',group_id:'group',item_id:'check'}]})}}}}};
+ const own={from(table){if(table==='dc_issues')return {select(){return {eq(){return {neq:async()=>({data:[]})}}}}};return {select(){return {in:async()=>({data:[{id,user_id:'owner',group_id:'group',item_id:'check'}]})}}}}};
  await validateFaultPhotos(own,'owner','group',items,{check:{status:'FAULTY',photos:[id]}});
  await assert.rejects(()=>validateFaultPhotos(own,'owner','different',items,{check:{status:'FAULTY',photos:[id]}}),/belong/);
 });
@@ -43,7 +43,7 @@ function notificationMocks(status,pdf_url,updated_at=new Date(0).toISOString()){
 test('Teams notification includes escaped inspector text, photo links and saved inspection link',async()=>{
  const {db,userDb}=notificationMocks('pending');const original=globalThis.fetch;let sent;const operations=[];
  globalThis.fetch=async(_,options)=>{sent=JSON.parse(options.body);operations.push(sent.operation);return Response.json({ok:true})};
- try{assert.deepEqual(await microsoftAction(db,userDb,{user_id:'owner',role:'inspector'},{action:'notify',recordId:'round'},async()=>btoa('%PDF-1.7 test')),{status:'sent'});assert.deepEqual(operations,['upload','notify']);assert.match(sent.messageHtml,/View inspection PDF/);assert.match(sent.messageHtml,/&lt;Inspector&gt;/);assert.match(sent.messageHtml,/View fault photo 1/);assert.match(sent.messageHtml,/\?inspection=round/);assert.match(sent.messageHtml,/\[TEST\]/)}finally{globalThis.fetch=original}
+ try{assert.deepEqual(await microsoftAction(db,userDb,{user_id:'owner',role:'inspector'},{action:'notify',recordId:'round'},async()=>btoa('%PDF-1.7 test')),{status:'sent'});assert.deepEqual(operations,['upload','notify']);assert.match(sent.messageHtml,/View inspection PDF/);assert.match(sent.messageHtml,/&lt;Inspector&gt;/);assert.match(sent.messageHtml,/View photo 1/);assert.match(sent.messageHtml,/\?inspection=round/);assert.match(sent.messageHtml,/\[TEST\]/)}finally{globalThis.fetch=original}
 });
 test('already sent notifications do not post again',async()=>{
  const {db,userDb}=notificationMocks('sent');const original=globalThis.fetch;globalThis.fetch=async()=>{throw Error('Must not call workflow')};try{assert.deepEqual(await microsoftAction(db,userDb,{user_id:'owner',role:'inspector'},{action:'notify',recordId:'round'}),{status:'sent'})}finally{globalThis.fetch=original}
@@ -67,4 +67,23 @@ test('interrupted sends become retryable but fresh leases and sent notifications
 test('retry recovers an interrupted claim and uploads the PDF before posting once',async()=>{
  const {db,userDb}=notificationMocks('sending');const original=globalThis.fetch,operations=[];globalThis.fetch=async(_,options)=>{operations.push(JSON.parse(options.body).operation);return Response.json({ok:true})};
  try{assert.deepEqual(await microsoftAction(db,userDb,{user_id:'owner',role:'inspector'},{action:'notify',recordId:'round'},async()=>btoa('%PDF-1.7')),{status:'sent'});assert.deepEqual(operations,['upload','notify'])}finally{globalThis.fetch=original}
+});
+
+test('active ticket can reuse original evidence but unrelated photo remains forbidden',async()=>{
+ const id='11111111-1111-4111-8111-111111111111';
+ const db={from(table){return table==='dc_issues'?{select:()=>({eq:()=>({neq:async()=>({data:[{item_id:'check',photos:[id]}]})})})}:{select:()=>({in:async()=>({data:[{id,user_id:'other',group_id:'group',item_id:'check'}]})})}}};
+ await validateFaultPhotos(db,'owner','group',[{id:'check'}],{check:{status:'FAULTY',photos:[id]}});
+ await assert.rejects(()=>validateFaultPhotos(db,'owner','other',[{id:'check'}],{check:{status:'FAULTY',photos:[id]}}),/belong/);
+});
+test('repair notification contains issue reference, repair fields, photos and history without generating inspection PDF',async()=>{
+ const {db,userDb}=notificationMocks('pending');
+ const record={id:'round',kind:'issue_event',issueId:'ticket',issueNumber:'261020-006',action:'Complete repair',status:'Awaiting verification',label:'Check',area:'Location',originalFault:'Fault',name:'Inspector',details:{rootCause:'Cause',repair:'Replaced component',furtherAction:'Yes',followUp:'Recheck',responsible:'Team',due:'2026-10-25',photos:['photo']}};
+ userDb.from=()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{payload:JSON.stringify(record),created_by:'owner'}})})})});
+ const original=globalThis.fetch,ops=[];let html='';globalThis.fetch=async(_,o)=>{const p=JSON.parse(o.body);ops.push(p.operation);html=p.messageHtml;return Response.json({ok:true})};
+ try{await microsoftAction(db,userDb,{user_id:'owner',role:'inspector'},{action:'notify',recordId:'round'},()=>{throw Error('Must not create inspection PDF')});assert.deepEqual(ops,['notify']);for(const value of ['261020-006','Replaced component','Recheck','Team','2026-10-25','photo.jpg','?issue=ticket'])assert.ok(html.includes(value),value)}finally{globalThis.fetch=original}
+});
+
+test('amendment notification identifies correction and links back to inspection history',async()=>{
+ const {db,userDb}=notificationMocks('pending');const record={id:'round',kind:'inspection_amendment',inspectionId:'original',revision:2,name:'Admin',area:'Area',details:{originalInspector:'Inspector',inspectionDate:'2026-10-20',shift:'2',reason:'Corrected reading',changedItems:['Temperature'],photos:['photo']}};
+ userDb.from=()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{payload:JSON.stringify(record),created_by:'owner'}})})})});const original=globalThis.fetch;let sent;const ops=[];globalThis.fetch=async(_,o)=>{sent=JSON.parse(o.body);ops.push(sent.operation);return Response.json({ok:true})};try{await microsoftAction(db,userDb,{user_id:'owner',role:'admin'},{action:'notify',recordId:'round'});assert.deepEqual(ops,['notify']);for(const value of ['Revision 2','Corrected reading','Inspector','?inspection=original','photo.jpg'])assert.ok(sent.messageHtml.includes(value))}finally{globalThis.fetch=original}
 });

@@ -1,0 +1,5 @@
+import {authorize,AccessError,errorResponse} from '../../../lib/supabase-server';
+import {validateShifts} from '../../../lib/shifts';
+export const dynamic='force-dynamic';
+export async function GET(req:Request){try{const client=await authorize(req);const result=await client.from('dc_company_settings').select('shift_schedule').eq('id',true).single();if(result.error)throw result.error;return Response.json({shifts:validateShifts(result.data.shift_schedule)},{headers:{'Cache-Control':'no-store'}})}catch(e){return errorResponse(e,'Could not load shift timings.')}}
+export async function PUT(req:Request){try{const client=await authorize(req,['admin']);const input:any=await req.json();let shifts;try{shifts=validateShifts(input.shifts)}catch(e){throw new AccessError((e as Error).message,400)}const result=await client.from('dc_company_settings').update({shift_schedule:shifts}).eq('id',true).select('shift_schedule').single();if(result.error)throw result.error;return Response.json({shifts:result.data.shift_schedule})}catch(e){return errorResponse(e,'Could not save shift timings.')}}

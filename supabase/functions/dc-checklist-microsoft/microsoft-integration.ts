@@ -55,7 +55,7 @@ export async function microsoftAction(db:SupabaseClient,userDb:SupabaseClient,pr
   const result=await db.from('dc_microsoft_settings').insert({created_by:profile.user_id,settings,webhook_url}).select('*').single();if(result.error)throw new IntegrationError('Could not save Microsoft settings.',500);return publicConfig(result.data);
  }
  if(action==='photo_upload'){
-  if(!['inspector','admin'].includes(profile.role))throw new IntegrationError('Your role cannot upload inspection photos.',403);
+  if(!['inspector','supervisor','admin'].includes(profile.role))throw new IntegrationError('Your role cannot upload inspection photos.',403);
   if(typeof input.group!=='string'||typeof input.item!=='string'||input.item.length>100)throw new IntegrationError('Select a checklist item.');
   const current=await config(db);if(!current?.settings.photosEnabled)throw new IntegrationError('Photo uploads are disabled. Contact an admin.',503);
   const image=validateImage(input.mime,input.content);
@@ -74,7 +74,8 @@ export async function microsoftAction(db:SupabaseClient,userDb:SupabaseClient,pr
  }
  if(action==='notify'||action==='notification_status'){
   const found=await userDb.from('dc_checklist_records').select('id,payload,created_by').eq('id',input.recordId).maybeSingle();if(found.error||!found.data)throw new IntegrationError('Inspection not found.',404);
-  const record=JSON.parse(found.data.payload);if(record.kind!=='inspection')throw new IntegrationError('Only inspections send submission notifications.');
+  let record=JSON.parse(found.data.payload);if(!['inspection','issue_event','inspection_amendment'].includes(record.kind))throw new IntegrationError('Only inspections send submission notifications.');
+  if(record.kind==='inspection'&&record.revision){const original=await db.from('dc_inspection_amendments').select('before_payload').eq('record_id',record.id).order('revision').limit(1).single();if(original.error)throw new IntegrationError('Original inspection snapshot is unavailable.',503);record=original.data.before_payload;}
   if(action==='notify'&&found.data.created_by!==profile.user_id&&profile.role!=='admin')throw new IntegrationError('Only the submitter or an admin can retry a notification.',403);
   let existing=await db.from('dc_teams_notifications').select('*').eq('record_id',record.id).maybeSingle();if(existing.error)throw new IntegrationError('Notification status is unavailable.',503);
   if(action==='notification_status')return {status:notificationInterrupted(existing.data)?'failed':existing.data?.status||'not_queued',canRetry:found.data.created_by===profile.user_id||profile.role==='admin'};
@@ -90,7 +91,7 @@ export async function microsoftAction(db:SupabaseClient,userDb:SupabaseClient,pr
   try{
   const current=await config(db,task.config_id);
   let pdfUrl=task.pdf_url;
-  if(!pdfUrl){
+  if(!pdfUrl&&record.kind==='inspection'){
    if(!buildPdf)throw new IntegrationError('PDF generation is unavailable.',503);
    const content=await buildPdf(record);
    const filename='inspection-'+record.date+'-shift-'+String(record.shift).replace(/[^a-zA-Z0-9-]/g,'')+'-'+record.id.replace(/[^a-zA-Z0-9-]/g,'')+'.pdf';
@@ -100,9 +101,16 @@ export async function microsoftAction(db:SupabaseClient,userDb:SupabaseClient,pr
    if(saved.error)throw new IntegrationError('PDF uploaded but its reference could not be saved.',503);
   }
   const count=Object.values(record.answers??{}).filter((a:any)=>a.status==='FAULTY').length;
-  const photoIds=[...new Set(Object.values(record.answers??{}).flatMap((a:any)=>a.photos||[]))];
-  let photoLinks='';if(photoIds.length){const photos=await db.from('dc_inspection_photos').select('id,web_url').in('id',photoIds);if(!photos.error)photoLinks='<p><b>Fault photos</b></p><ul>'+(photos.data??[]).map((p,index)=>'<li><a href="'+escapeHtml(p.web_url)+'">View fault photo '+(index+1)+'</a></li>').join('')+'</ul>'}
-  const messageHtml='<p><b>'+ (current.settings.mode==='test'?'[TEST] ':'')+'Checklist submitted</b></p><p>Inspector: '+escapeHtml(record.name)+'<br/>Date: '+escapeHtml(record.date)+' · Shift '+escapeHtml(record.shift)+'<br/>Area: '+escapeHtml(record.area||record.group)+'<br/>Faults: '+count+'</p><p><a href="'+escapeHtml(pdfUrl)+'">View inspection PDF</a></p><p><a href="https://dc-daily-checklist.sameer1123.chatgpt.site/?inspection='+encodeURIComponent(record.id)+'">Open inspection</a></p>'+photoLinks;
+  const photoIds=[...new Set(record.kind!=='inspection'?(record.details?.photos||[]):Object.values(record.answers??{}).flatMap((a:any)=>a.photos||[]))];
+  let photoLinks='';if(photoIds.length){const photos=await db.from('dc_inspection_photos').select('id,web_url').in('id',photoIds);if(!photos.error)photoLinks='<p><b>Fault photos</b></p><ul>'+(photos.data??[]).map((p,index)=>'<li><a href="'+escapeHtml(p.web_url)+'">View photo '+(index+1)+'</a><br/><img src="'+escapeHtml(p.web_url)+'" alt="Issue photo" width="320"/></li>').join('')+'</ul>'}
+  let messageHtml='<p><b>'+ (current.settings.mode==='test'?'[TEST] ':'')+'Checklist submitted</b></p><p>Inspector: '+escapeHtml(record.name)+'<br/>Date: '+escapeHtml(record.date)+' · Shift '+escapeHtml(record.shift)+'<br/>Area: '+escapeHtml(record.area||record.group)+'<br/>Faults: '+count+'</p><p><a href="'+escapeHtml(pdfUrl)+'">View inspection PDF</a></p><p><a href="https://dc-daily-checklist.sameer1123.chatgpt.site/?inspection='+encodeURIComponent(record.id)+'">Open inspection</a></p>'+photoLinks;
+  if(record.kind==='issue_event'){
+   const labels:Record<string,string>={rootCause:'Problem Description / Root Cause',repair:'Repair / Replacement Details',contractor:'Contractor / Technician',reference:'Work Order / Ticket Reference',furtherAction:'Further Action Required',followUp:'Follow-up Action',responsible:'Responsible Person',due:'Target Completion Date',verification:'Verification Comments',completedBy:'Completed By',dateTime:'Date / Time'};
+   const detailHtml=Object.entries(record.details||{}).filter(([k,v])=>k!=='photos'&&v!==''&&v!=null).map(([k,v])=>'<p><b>'+escapeHtml(labels[k]||k)+':</b> '+escapeHtml(v)+'</p>').join('');
+   messageHtml='<p><b>'+(current.settings.mode==='test'?'[TEST] ':'')+'Issue '+escapeHtml(record.issueNumber)+' — '+escapeHtml(record.action)+'</b></p><p>Item: '+escapeHtml(record.label)+'<br/>Location: '+escapeHtml(record.area)+'<br/>Original fault: '+escapeHtml(record.originalFault)+'<br/>Status: '+escapeHtml(record.status)+'<br/>Updated by: '+escapeHtml(record.name)+'</p>'+detailHtml+'<p><a href="https://dc-daily-checklist.sameer1123.chatgpt.site/?issue='+encodeURIComponent(record.issueId)+'">Open issue and repair history</a></p>'+photoLinks;
+  }else if(record.kind==='inspection_amendment'){
+   messageHtml='<p><b>'+(current.settings.mode==='test'?'[TEST] ':'')+'Submitted checklist amended — Revision '+escapeHtml(record.revision)+'</b></p><p>Amended by: '+escapeHtml(record.name)+'<br/>Original inspector: '+escapeHtml(record.details?.originalInspector)+'<br/>Area: '+escapeHtml(record.area)+'<br/>Corrected inspection date / shift: '+escapeHtml(record.details?.inspectionDate)+' / '+escapeHtml(record.details?.shift)+'<br/>Reason: '+escapeHtml(record.details?.reason)+'<br/>Changed items: '+escapeHtml((record.details?.changedItems||[]).join(', '))+'</p><p><a href="https://dc-daily-checklist.sameer1123.chatgpt.site/?inspection='+encodeURIComponent(record.inspectionId)+'">View corrected checklist and amendment history</a></p>'+photoLinks;
+  }else{const refs=Object.values(record.answers??{}).filter((a:any)=>a.issueNumber).map((a:any)=>escapeHtml(a.issueNumber));if(refs.length)messageHtml+='<p>Issue references: '+refs.join(', ')+'</p>';}
   await callWorkflow(current,{operation:'notify',teamId:current.settings.teamId,channelId:current.settings.channelId,messageHtml});await db.from('dc_teams_notifications').update({status:'sent',updated_at:new Date().toISOString()}).eq('record_id',record.id);return {status:'sent'}}catch(e){await db.from('dc_teams_notifications').update({status:'failed',updated_at:new Date().toISOString()}).eq('record_id',record.id);throw e}
  }
  throw new IntegrationError('Unknown Microsoft operation.');

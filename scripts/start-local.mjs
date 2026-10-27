@@ -38,7 +38,12 @@ async function main(){
   server.once('exit',()=>{stopped=true});
   const ready=(async()=>{for(let attempt=0;attempt<90&&!stopped;attempt++){
     try{const response=await fetch(url,{signal:AbortSignal.timeout(1500)});if(response.ok&&(await response.text()).includes('DC Daily Checklist')){
-      if(!stopped){const browser=run(comspec,['/d','/s','/c','start "" "'+url+'"'],{stdio:'ignore'});browser.on('error',()=>console.log('Open '+url+' in your browser.'));}return;
+      if(!stopped){
+        const fallback=()=>console.log('Open '+url+' in your browser.');
+        const browser=run('powershell.exe',['-NoProfile','-NonInteractive','-WindowStyle','Hidden','-Command',"Start-Process -FilePath '"+url+"'"],{stdio:'ignore',windowsHide:true});
+        browser.once('error',fallback);
+        browser.once('exit',code=>{if(code!==0)fallback()});
+      }return;
     }}catch{}
     await new Promise(resolve=>setTimeout(resolve,1000));
   }if(!stopped)console.log('The browser could not open automatically. Open '+url+' when the server is ready.');})();

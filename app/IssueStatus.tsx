@@ -1,0 +1,1 @@
+export default function IssueStatus({status}:{status:string}){const tone:Record<string,string>={'Open':'open','In progress':'progress','Awaiting verification':'verification','Closed':'closed'};return <span className={'issue-status '+(tone[status]||'unknown')}>{status}</span>}

@@ -8,6 +8,6 @@ export function canReview(role:Role){return role==='supervisor'||role==='admin'}
 export function canOpenTab(role:Role,tab:string){
   if(tab==='Admin users'||tab==='Manage checklists')return role==='admin';
   if(tab==='Fill checklist')return canInspect(role);
-  if(tab==='Supervisor view'||tab==='Completion history')return canReview(role);
+  if(tab==='Supervisor view')return canReview(role);
   return true;
 }
