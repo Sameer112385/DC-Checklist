@@ -139,3 +139,5 @@ td[data-label="Issue"]>.issue-link{display:flex;width:max-content;margin-bottom:
 @media(prefers-reduced-motion:reduce){.mobile-navigation[open]{animation:none}}
 
 @media(max-width:750px){.mobile-nav-header{justify-content:flex-start}.mobile-nav-header>.mobile-brand{flex:1}.mobile-navigation[open]{left:0;right:auto;direction:ltr}}
+
+@media(max-width:750px){.issue-toolbar>label{grid-column:auto;min-width:0}.issue-toolbar>label select{max-width:100%;min-width:0}.issue-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:360px){.issue-toolbar>label{grid-column:1 / -1}}
